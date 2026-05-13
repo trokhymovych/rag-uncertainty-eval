@@ -1,0 +1,7 @@
+datasets
+pandas
+matplotlib
+seaborn
+numpy
+scikit-learn
+openai
