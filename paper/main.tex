@@ -147,12 +147,12 @@ Standardised IR benchmarks such as BEIR~\cite{thakur2021beir} and MIRACL~\cite{z
 Dense retrieval training relies heavily on hard negatives~\cite{karpukhin2020dpr} to improve model discrimination. 
 However, their downstream effect on RAG agent behavior has not been studied systematically.
 
-Frameworks such as 
-RAGAS~\cite{es2024ragas}, 
-ARES~\cite{saadfalcon2024ares}, 
-and RGB~\cite{chen2024benchmarking} 
-evaluate RAG pipeline quality. They mostly focus on what happens when retrieval works, measuring faithfulness and relevance. 
-They do not target what happens when retrieval returns misleading context.
+Frameworks such as RAGAS~\cite{es2024ragas}, ARES~\cite{saadfalcon2024ares}, 
+and RGB~\cite{chen2024benchmarking} evaluate RAG pipeline quality, 
+primarily measuring faithfulness and answer relevance given retrieved context. 
+While RGB includes limited noise robustness tests, none of these frameworks 
+systematically target the failure mode where retrieval returns misleading or 
+conflicting information.
 
 Hallucination in LLMs has been extensively studied~\cite{ji2023survey}. 
 In context-grounded generation, faithfulness (consistency with context) and factuality (consistency with world knowledge) are distinct properties~\cite{maynez2020faithfulness}. 
