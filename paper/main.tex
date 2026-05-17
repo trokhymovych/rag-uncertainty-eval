@@ -311,6 +311,76 @@ The benchmark is derived from MIRACL hard negatives and stratified by IR-grounde
 Across eight experiments with four frontier LLMs, we showed three things: hallucination rises with distractor difficulty; models almost never hedge; and explicit abstention instructions reduce but do not eliminate hallucination---12--22\% residual rates persist on hard distractors. 
 These findings show that retrieval quality and systematic IR-based uncertainty evaluation are both essential for reliable RAG deployment. 
 
+\appendix
+
+\section{Prompts}
+\label{app:prompts}
+
+This appendix lists the prompts used in the generation and evaluation stages.
+
+\subsection{Simple Answering Prompt}
+\label{app:simple-prompt}
+
+\begin{lstlisting}[language=Python]
+SYSTEM_PROMPT = """You are a question-answering system for RAG evaluation.
+Use only the provided context passage.
+Do not use outside knowledge.
+Keep the answer concise."""
+\end{lstlisting}
+
+\subsection{Advanced Answering Prompt}
+\label{app:advanced-prompt}
+
+\begin{lstlisting}[language=Python]
+SYSTEM_PROMPT = """You are a question-answering system for RAG evaluation.
+Use only the provided context passage.
+Do not use outside knowledge.
+If the context does not contain enough information to answer the question, say: "I don't know based on the provided context."
+Keep the answer concise."""
+\end{lstlisting}
+
+\subsection{LLM-as-Judge Evaluation Prompt}
+\label{app:judge-prompt}
+
+\begin{lstlisting}
+You are a strict evaluator of RAG answers.
+
+Your task is to classify a model response into exactly one category:
+ABSTAIN, HALLUCINATE, HEDGE, or CORRECT.
+
+Use only the gold passage title and gold passage text as the source of truth.
+Do not use outside knowledge.
+Return only valid JSON matching the provided schema.
+Classify the following RAG response into exactly one category.
+
+Categories:
+
+ABSTAIN -- the model says it cannot answer, says the provided context is insufficient, or refuses to answer from the available context.
+
+HALLUCINATE -- the model gives an answer that is not supported by the gold passage, contradicts the gold passage, or answers using unsupported information.
+
+HEDGE -- the model is uncertain, vague, or hedges, but still attempts an answer. Examples include phrases such as "probably", "it appears", "the context suggests", "may be", or "seems to be", when followed by an attempted answer.
+
+CORRECT -- the model answers the question correctly according to the gold passage. Exact wording is not required.
+
+Question:
+{question}
+
+Gold passage text:
+{gold_passage}
+
+Model response produced using distractor context:
+{model_output}
+
+- Use the gold passage text as the only source of truth.
+- If the response is correct according to the gold passage, classify it as CORRECT.
+- If the response clearly says it cannot answer from the context, classify it as ABSTAIN.
+- If the response gives a wrong or unsupported answer, classify it as HALLUCINATE.
+- If the response is uncertain but still attempts an answer, classify it as HEDGE.
+- Choose exactly one label.
+\end{lstlisting}
+
+
 \bibliographystyle{ACM-Reference-Format}
 \bibliography{custom}
 
