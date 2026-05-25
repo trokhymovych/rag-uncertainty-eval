@@ -42,6 +42,41 @@ export PYTHONPATH=$PWD/src:$PYTHONPATH
 ```
 ---
 
+## Models
+
+The experiment pipeline supports four generation models:
+
+```text
+GPT-5
+GPT-4.1
+Claude Sonnet 4
+Gemini 3.1 Flash-Lite
+```
+
+Each model is evaluated under two prompt variants:
+
+```text
+simple
+advanced
+```
+
+and two context modes:
+
+```text
+distractor
+distractor_plus_gold
+```
+
+This gives:
+
+```text
+4 models × 2 prompts × 2 context modes = 16 generation experiments
+```
+
+Generated answers are then classified with GPT-5 as an LLM-as-judge.
+
+---
+
 ## Usage
 
 ```bash
