@@ -46,20 +46,33 @@ python src/metrics/calibration.py --input results/tables/classifications.csv
 
 ---
 
-## Project structure
+## Repository Structure
 
 ```
-src/
-  dataset/      # MIRACL loader
-  rag/          # prompt templates + model API loop
-  judge/        # LLM-as-judge classifier + human validation (Cohen's kappa)
-  metrics/      # ECE, Brier score, overconfidence gap
-notebooks/      # exploration and analysis
-results/        # outputs (gitignored)
-configs/        # model names and API versions
-```
-
+rag-uncertainty-eval/
+├── configs/
+│   └── experiments.yaml          # experiment configuration
+├── src/
+│   └── rag_eval/
+│       ├── config.py             # config loading utilities
+│       ├── columns.py            # column detection helpers
+│       ├── prompts.py            # simple and advanced prompts
+│       ├── clients.py            # OpenAI, Anthropic, Gemini clients
+│       ├── run_generation.py     # generation pipeline
+│       ├── run_judge.py          # LLM-as-judge classification
+│       └── analyze.py            # result analysis
+├── notebooks/
+│   ├── 01-miracl-hard-negatives-eda.ipynb
+│   ├── 02-eval-dataset-construction.ipynb
+│   ├── 03-gpt-distractor-answering.ipynb
+│   └── 04-gpt5-llm-as-judge.ipynb
+├── paper/                        # paper source files
+├── results/                      # generated results, usually gitignored
+├── README.md
+├── requirements.txt
+└── LICENSE
 ---
+```
 
 ## Citation
 

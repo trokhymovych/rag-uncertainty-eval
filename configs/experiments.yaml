@@ -1,0 +1,72 @@
+# RAG uncertainty experiments config
+# Runs 4 generation models × 2 prompt variants × 2 context modes = 16 experiments.
+
+input_csv: data/rag_eval_en_300.csv
+output_dir: outputs/generation
+
+# Optional. Set to null to process all rows.
+n_rows: null
+save_every: 1
+sleep_between_calls: 0.2
+max_retries: 3
+
+columns:
+  query: [query, question, user_query]
+  distractor: [distractor, distractor_text, distractor_passage, distractor_passage_text, negative, negative_text, negative_passage, negative_passage_text, hard_negative, hard_negative_text, hard_negative_passage, hard_negative_passage_text]
+  gold_passage: [gold_passage_text, gold_passage, gold_pass, gold_context, gold passage, gold_passage_content, positive, positive_text, positive_passage, positive_passage_text]
+  gold_title: [gold_passage_title, gold_title, gold document title, gold_doc_title, positive_title, positive_passage_title, title]
+
+prompt_variants:
+  simple:
+    system_prompt: |-
+      You are a question-answering system for RAG evaluation.
+      Use only the provided context passage.
+      Do not use outside knowledge.
+      Keep the answer concise.
+  advanced:
+    system_prompt: |-
+      You are a question-answering system for RAG evaluation.
+      Use only the provided context passage.
+      Do not use outside knowledge.
+      If the context does not contain enough information to answer the question, say: "I don't know based on the provided context."
+      Keep the answer concise.
+
+context_modes:
+  distractor:
+    answer_col: answer_with_distractor
+    include_distractor: true
+    include_gold: false
+  distractor_plus_gold:
+    answer_col: answer_with_distractor_and_gold
+    include_distractor: true
+    include_gold: true
+
+models:
+  gpt5:
+    provider: openai
+    model: gpt-5
+    api_key_env: OPENAI_API_KEY
+    temperature: null   # keep null for GPT-5 if your endpoint rejects temperature
+    max_output_tokens: 128
+  gpt41:
+    provider: openai
+    model: gpt-4.1
+    api_key_env: OPENAI_API_KEY
+    temperature: 0
+    max_output_tokens: 128
+  claude_sonnet4:
+    provider: anthropic
+    model: claude-sonnet-4-20250514
+    api_key_env: ANTHROPIC_API_KEY
+    temperature: 0
+    max_output_tokens: 128
+  gemini_flash_lite:
+    provider: gemini
+    model: gemini-3.1-flash-lite
+    api_key_env: GEMINI_API_KEY
+    temperature: 0
+    max_output_tokens: 128
+
+# Leave empty/null to run all combinations.
+# Or restrict, e.g. only: [gpt5__simple__distractor]
+only: null
