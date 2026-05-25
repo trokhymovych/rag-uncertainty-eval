@@ -18,13 +18,28 @@ Dataset: **MIRACL English** — 300 human-annotated negative passages
 
 ## Setup
 
-```bash
+Clone the repository:
+
+```
 git clone https://github.com/<your-org>/rag-uncertainty-eval.git
 cd rag-uncertainty-eval
-pip install -r requirements.txt
-cp .env.example .env   # add your API keys
 ```
 
+Create and activate a virtual environment:
+
+```
+python -m venv .venv
+source .venv/bin/activate
+```
+
+Install dependencies:
+```
+pip install -r requirements.txt
+```
+Add the project source path:
+```
+export PYTHONPATH=$PWD/src:$PYTHONPATH
+```
 ---
 
 ## Usage
