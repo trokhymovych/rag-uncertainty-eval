@@ -1,10 +1,9 @@
 # RAG uncertainty experiments config
-# Runs 4 generation models × 2 prompt variants × 2 context modes = 16 experiments.
+# Runs 4 generation models × 2 prompt variants × 2 context modes = 16 experiments
 
 input_csv: data/rag_eval_en_300.csv
 output_dir: outputs/generation
 
-# Optional. Set to null to process all rows.
 n_rows: null
 save_every: 1
 sleep_between_calls: 0.2
@@ -46,7 +45,7 @@ models:
     provider: openai
     model: gpt-5
     api_key_env: OPENAI_API_KEY
-    temperature: null   # keep null for GPT-5 if your endpoint rejects temperature
+    temperature: null   # keep null for GPT-5
     max_output_tokens: 128
   gpt41:
     provider: openai
