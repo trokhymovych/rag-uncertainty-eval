@@ -7,12 +7,74 @@ Code for **"Does the RAG Know It Doesn't Know? IR Benchmarks for RAG Uncertainty
 
 ---
 
-## What this is
+## Overview
 
 We evaluate whether RAG models know when they can't answer. Given a topically relevant but **answer-free** passage, does the model hallucinate, abstain, or hedge? We measure how well stated confidence matches actual accuracy.
 
+The model answers using the retrieved context, and its response is classified into one of four labels:
+
+- `ABSTAIN`
+- `HALLUCINATE`
+- `HEDGE`
+- `CORRECT`
+
 Models tested: **GPT-5.5, Claude Sonnet 4.6, Gemma 4 31B, Gemma 4 E2B, Qwen3.6-27B**  
 Dataset: **MIRACL English** — 300 human-annotated negative passages
+
+---
+
+## Dataset
+
+The benchmark is built from the English split of **MIRACL Hard Negatives**.
+
+Distractor passages are stratified into three difficulty levels using TF-IDF cosine similarity between the distractor passage and the gold passage:
+
+- `easy`
+- `medium`
+- `hard`
+
+The final benchmark contains 300 examples:
+
+```text
+100 easy distractors
+100 medium distractors
+100 hard distractors
+```
+
+---
+
+## Experiments
+
+The pipeline evaluates four generation models:
+
+```text
+GPT-5
+GPT-4.1
+Claude Sonnet 4
+Gemini 3.1 Flash-Lite
+```
+
+Each model is tested with two prompt variants:
+
+```text
+simple
+advanced
+```
+
+and two context modes:
+
+```text
+distractor
+distractor_plus_gold
+```
+
+This gives:
+
+```text
+4 models × 2 prompts × 2 context modes = 16 generation experiments
+```
+
+Generated answers are classified using GPT-5 as an LLM-as-a-judge.
 
 ---
 
