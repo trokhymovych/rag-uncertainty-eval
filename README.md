@@ -1,4 +1,4 @@
-# rag-uncertainty-eval
+# Does the RAG Know It Doesn't Know? IR Benchmarks for RAG Uncertainty Evaluation
 
 Code for **“Does the RAG Know It Doesn't Know? IR Benchmarks for RAG Uncertainty Evaluation”**.
 
