@@ -117,17 +117,13 @@ Gemini 3.1 Flash-Lite
 
 Each model is evaluated under two prompt variants:
 
-```text
-simple
-advanced
-```
+- Simple
+- Advanced
 
 and two context modes:
 
-```text
-distractor
-distractor_plus_gold
-```
+- `distractor`
+- `distractor_plus_gold`
 
 This gives:
 
