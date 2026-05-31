@@ -1,6 +1,6 @@
 # rag-uncertainty-eval
 
-Code for **"Does the Agent Know It Doesn't Know? Evaluating Uncertainty Awareness in RAG Systems"**
+Code for **"Does the RAG Know It Doesn't Know? IR Benchmarks for RAG Uncertainty Evaluation"**
 
 [![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](LICENSE)
 [![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/)
