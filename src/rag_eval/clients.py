@@ -121,6 +121,45 @@ class GeminiProvider(BaseProvider):
         return self._extract_text(response)
 
 
+class OllamaProvider(BaseProvider):
+    def __init__(self, base_url: str = "http://localhost:11434") -> None:
+        # Normalise: native API lives at /api/chat, strip /v1 if passed
+        self.base_url = base_url.rstrip("/").removesuffix("/v1")
+
+    def generate(self, request: GenerationRequest) -> str:
+        import json
+        import urllib.request
+
+        cfg = request.model_cfg
+        payload: dict[str, Any] = {
+            "model": cfg["model"],
+            "messages": [
+                {"role": "system", "content": request.system_prompt},
+                {"role": "user", "content": request.user_prompt},
+            ],
+            "stream": False,
+        }
+        if cfg.get("think") is not None:
+            payload["think"] = cfg["think"]
+        options: dict[str, Any] = {}
+        if cfg.get("temperature") is not None:
+            options["temperature"] = cfg["temperature"]
+        if cfg.get("max_output_tokens") is not None:
+            options["num_predict"] = int(cfg["max_output_tokens"])
+        if options:
+            payload["options"] = options
+
+        data = json.dumps(payload).encode()
+        req = urllib.request.Request(
+            f"{self.base_url}/api/chat",
+            data=data,
+            headers={"Content-Type": "application/json"},
+        )
+        with urllib.request.urlopen(req) as resp:
+            result = json.loads(resp.read())
+        return (result.get("message", {}).get("content") or "").strip()
+
+
 def make_provider(model_cfg: dict[str, Any]) -> BaseProvider:
     provider = model_cfg["provider"].lower()
     api_key_env = model_cfg.get("api_key_env")
@@ -131,5 +170,7 @@ def make_provider(model_cfg: dict[str, Any]) -> BaseProvider:
         return AnthropicProvider(api_key_env or "ANTHROPIC_API_KEY")
     if provider == "gemini":
         return GeminiProvider(api_key_env or "GEMINI_API_KEY")
+    if provider == "ollama":
+        return OllamaProvider(model_cfg.get("base_url", "http://localhost:11434/v1"))
 
     raise ValueError(f"Unsupported provider: {provider}")

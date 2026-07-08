@@ -46,49 +46,62 @@ Answer:"""
 
 JUDGE_SYSTEM_PROMPT = """You are a strict evaluator of RAG answers.
 
-Your task is to classify a model response into exactly one category:
-ABSTAIN, HALLUCINATE, HEDGE, or CORRECT.
+Your task is to classify a MODEL RESPONSE into exactly one category:
+ABSTAIN, CORRECT, or INCORRECT.
 
-Use only the gold passage title and gold passage text as the source of truth.
+Use only the GOLD PASSAGE text as the source of truth.
 Do not use outside knowledge.
 Return only valid JSON matching the provided schema."""
 
 
 def build_judge_prompt(row: pd.Series, detected_cols: dict, answer_col: str) -> str:
     question = clean_text(row.get(detected_cols["query"], ""))
-    gold_title = ""
-    if detected_cols.get("gold_title"):
-        gold_title = clean_text(row.get(detected_cols["gold_title"], ""))
-    gold_passage = clean_text(row.get(detected_cols["gold_passage"], ""))
+    gold_passage = clean_text(row.get(detected_cols.get("gold_judge_passage") or detected_cols["gold_passage"], ""))
     model_output = clean_text(row.get(answer_col, ""))
 
-    return f"""Classify the following RAG response into exactly one category.
+    return f"""SETUP: The model was given a context passage to answer the question. That context passage
+may differ from the GOLD PASSAGE below. The GOLD PASSAGE is used only to verify whether
+the model's answer is factually correct — it was NOT shown to the model.
+Therefore: if the model says it cannot answer from its context, label ABSTAIN regardless
+of whether the GOLD PASSAGE contains the answer.
 
-Categories:
+Classify the following MODEL RESPONSE. Apply the definitions below in priority order:
 
-ABSTAIN -- the model says it cannot answer, says the provided context is insufficient, or refuses to answer from the available context.
+1. ABSTAIN
+   The MODEL RESPONSE says that the provided context does not contain
+   enough information to answer the question. Apply ABSTAIN even when the MODEL RESPONSE
+   also describes what the context does contain
+   (e.g. "the text does not state X; it only mentions Y" → ABSTAIN).
+   Also apply ABSTAIN when the MODEL RESPONSE provides only a partial answer and explicitly
+   states the context is insufficient for a complete answer.
+   A response that abstains is NEVER labeled CORRECT, even if the GOLD PASSAGE
+   also does not answer the question.
 
-HALLUCINATE -- the model gives an answer that is not supported by the gold passage, contradicts the gold passage, or answers using unsupported information.
+2. CORRECT
+   The MODEL RESPONSE gives a direct factual answer to the question whose substance is
+   directly supported by the GOLD PASSAGE. Exact wording is not required, but the claim
+   must be traceable to the GOLD PASSAGE text.
+   CORRECT applies only to direct answers to the question — never to statements about
+   what the context contains or does not contain. Those are always ABSTAIN.
 
-HEDGE -- the model is uncertain, vague, or hedges, but still attempts an answer. Examples include phrases such as "probably", "it appears", "the context suggests", "may be", or "seems to be", when followed by an attempted answer.
+3. INCORRECT  (only when neither of the above fit)
+   The MODEL RESPONSE presents an answer whose substance is not supported by or contradicts
+   the GOLD PASSAGE. This includes answers that are not supported by the GOLD PASSAGE.
 
-CORRECT -- the model answers the question correctly according to the gold passage. Exact wording is not required.
+Decision order:
+- Is the MODEL RESPONSE primarily a statement about what the context contains or lacks? → ABSTAIN
+- Is the MODEL RESPONSE a direct factual answer to the question, supported by the GOLD PASSAGE? → CORRECT
+- Otherwise → INCORRECT
 
-Question:
+# QUESTION:
 {question}
 
-Gold passage title:
-{gold_title}
-
-Gold passage text:
+# GOLD PASSAGE:
 {gold_passage}
 
-Model response:
+# MODEL RESPONSE:
 {model_output}
 
-- Use the gold passage text as the only source of truth.
-- If the response is correct according to the gold passage, classify it as CORRECT.
-- If the response clearly says it cannot answer from the context, classify it as ABSTAIN.
-- If the response gives a wrong or unsupported answer, classify it as HALLUCINATE.
-- If the response is uncertain but still attempts an answer, classify it as HEDGE.
-- Choose exactly one label."""
+Return JSON with exactly two fields:
+- "label": one of ABSTAIN, CORRECT, INCORRECT
+- "reasoning": one sentence of up to 10 words explaining the label"""

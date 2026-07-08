@@ -15,14 +15,15 @@ from rag_eval.columns import detect_columns, require_columns
 from rag_eval.config import load_config
 from rag_eval.prompts import JUDGE_SYSTEM_PROMPT, build_judge_prompt
 
-VALID_LABELS = ["ABSTAIN", "HALLUCINATE", "HEDGE", "CORRECT"]
+VALID_LABELS = ["ABSTAIN", "INCORRECT", "CORRECT"]
 
 JUDGE_SCHEMA = {
     "type": "object",
     "properties": {
         "label": {"type": "string", "enum": VALID_LABELS},
+        "reasoning": {"type": "string"},
     },
-    "required": ["label"],
+    "required": ["label", "reasoning"],
     "additionalProperties": False,
 }
 
@@ -40,6 +41,9 @@ def extract_response_text(response) -> str:
     return "\n".join(chunks).strip()
 
 
+_LABEL_KEYS = ("label", "classification", "category", "result", "verdict", "judgment")
+
+
 def parse_judge_json(text: str) -> dict[str, Any]:
     try:
         data = json.loads(text)
@@ -49,9 +53,10 @@ def parse_judge_json(text: str) -> dict[str, Any]:
         if start == -1 or end == -1 or end <= start:
             raise
         data = json.loads(text[start : end + 1])
-    if data.get("label") not in VALID_LABELS:
+    label = next((data[k] for k in _LABEL_KEYS if data.get(k) in VALID_LABELS), None)
+    if label is None:
         raise ValueError(f"Invalid label: {data}")
-    return data
+    return {"label": label, "reasoning": data.get("reasoning", "")}
 
 
 def is_missing(series: pd.Series) -> pd.Series:
@@ -64,7 +69,9 @@ def main() -> None:
     parser.add_argument("--input", type=Path, required=True, help="Generated CSV to judge.")
     parser.add_argument("--output", type=Path, default=None, help="Output judged CSV. Default: input stem + __judged.csv")
     parser.add_argument("--answer-col", type=str, default=None, help="Answer column to judge. If omitted, inferred from context_mode column.")
-    parser.add_argument("--model", type=str, default="gpt-5", help="OpenAI judge model.")
+    parser.add_argument("--model", type=str, default="gpt-5", help="Judge model name.")
+    parser.add_argument("--judge-provider", type=str, default="openai", choices=["openai", "ollama"], help="Provider for judge model.")
+    parser.add_argument("--judge-base-url", type=str, default="http://localhost:11434/v1", help="Base URL for Ollama judge.")
     parser.add_argument("--max-retries", type=int, default=3)
     parser.add_argument("--save-every", type=int, default=1)
     args = parser.parse_args()
@@ -95,43 +102,66 @@ def main() -> None:
     else:
         judged_df = df.copy()
 
-    for col in ["judge_label", "judge_raw_json", "judge_error"]:
+    for col in ["judge_label", "judge_reasoning", "judge_raw_json", "judge_error"]:
         if col not in judged_df.columns:
             judged_df[col] = pd.NA
 
-    api_key = os.getenv("OPENAI_API_KEY")
-    if not api_key:
-        raise ValueError("OPENAI_API_KEY is not set.")
-    client = OpenAI(api_key=api_key)
+    if args.judge_provider != "ollama":
+        api_key = os.getenv("OPENAI_API_KEY")
+        if not api_key:
+            raise ValueError("OPENAI_API_KEY is not set.")
+        client = OpenAI(api_key=api_key)
 
     indices = list(judged_df.loc[is_missing(judged_df["judge_label"])].index)
     print(f"Loaded {len(judged_df)} rows. Rows to judge: {len(indices)}")
     print(f"Answer column: {answer_col}")
+    print(f"Judge provider: {args.judge_provider}, model: {args.model}")
 
     for n, idx in enumerate(tqdm(indices, desc="judging"), start=1):
         prompt = build_judge_prompt(judged_df.loc[idx], detected_cols, answer_col)
-        label, raw_json, error = "", "", ""
+        label, reasoning, raw_json, error = "", "", "", ""
 
         for attempt in range(1, args.max_retries + 1):
             try:
-                response = client.responses.create(
-                    model=args.model,
-                    input=[
-                        {"role": "system", "content": JUDGE_SYSTEM_PROMPT},
-                        {"role": "user", "content": prompt},
-                    ],
-                    text={
-                        "format": {
-                            "type": "json_schema",
-                            "name": "rag_judgment",
-                            "schema": JUDGE_SCHEMA,
-                            "strict": True,
-                        }
-                    },
-                )
-                raw_text = extract_response_text(response)
+                if args.judge_provider == "ollama":
+                    import urllib.request as _urllib
+                    payload = json.dumps({
+                        "model": args.model,
+                        "messages": [
+                            {"role": "system", "content": JUDGE_SYSTEM_PROMPT},
+                            {"role": "user", "content": prompt},
+                        ],
+                        "stream": False,
+                        "format": JUDGE_SCHEMA,
+                    }).encode()
+                    ollama_base_url = args.judge_base_url.rstrip("/").removesuffix("/v1")
+                    req = _urllib.Request(
+                        f"{ollama_base_url}/api/chat",
+                        data=payload,
+                        headers={"Content-Type": "application/json"},
+                    )
+                    with _urllib.urlopen(req) as resp:
+                        raw_text = json.loads(resp.read()).get("message", {}).get("content", "")
+                else:
+                    response = client.responses.create(
+                        model=args.model,
+                        input=[
+                            {"role": "system", "content": JUDGE_SYSTEM_PROMPT},
+                            {"role": "user", "content": prompt},
+                        ],
+                        text={
+                            "format": {
+                                "type": "json_schema",
+                                "name": "rag_judgment",
+                                "schema": JUDGE_SCHEMA,
+                                "strict": True,
+                            }
+                        },
+                    )
+                    raw_text = extract_response_text(response)
                 parsed = parse_judge_json(raw_text)
                 label = parsed["label"]
+                reasoning = parsed.get("reasoning", "")
                 raw_json = json.dumps(parsed, ensure_ascii=False)
                 break
             except Exception as e:  # noqa: BLE001
@@ -141,6 +171,7 @@ def main() -> None:
                 time.sleep(wait)
 
         judged_df.at[idx, "judge_label"] = label if label else pd.NA
+        judged_df.at[idx, "judge_reasoning"] = reasoning if label else pd.NA
         judged_df.at[idx, "judge_raw_json"] = raw_json
         judged_df.at[idx, "judge_error"] = error
 

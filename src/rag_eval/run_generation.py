@@ -129,6 +129,10 @@ def main() -> None:
         raise FileNotFoundError(f"Input CSV not found: {input_csv.resolve()}")
 
     df = pd.read_csv(input_csv)
+    language_filter = cfg.get("language_filter")
+    if language_filter:
+        df = df[df["language"] == language_filter].reset_index(drop=True)
+        print(f"Filtered to language='{language_filter}': {len(df)} rows")
     detected_cols = detect_columns(df, cfg["columns"])
     require_columns(df, detected_cols, required=["query", "distractor", "gold_passage"])
 

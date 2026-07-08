@@ -26,10 +26,13 @@ def find_col(dataframe: pd.DataFrame, candidates: list[str]) -> str | None:
 
 
 def detect_columns(df: pd.DataFrame, columns_cfg: dict) -> dict[str, str | None]:
+    gold_passage = find_col(df, columns_cfg.get("gold_passage", []))
     detected = {
         "query": find_col(df, columns_cfg.get("query", [])),
         "distractor": find_col(df, columns_cfg.get("distractor", [])),
-        "gold_passage": find_col(df, columns_cfg.get("gold_passage", [])),
+        "gold_passage": gold_passage,
+        # gold_judge_passage falls back to gold_passage when not specified separately
+        "gold_judge_passage": find_col(df, columns_cfg.get("gold_judge_passage", [])) or gold_passage,
         "gold_title": find_col(df, columns_cfg.get("gold_title", [])),
     }
     return detected

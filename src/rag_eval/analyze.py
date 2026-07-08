@@ -7,7 +7,7 @@ import pandas as pd
 
 from rag_eval.columns import find_col
 
-VALID_LABELS = ["ABSTAIN", "HALLUCINATE", "HEDGE", "CORRECT"]
+VALID_LABELS = ["ABSTAIN", "INCORRECT", "CORRECT"]
 VALID_DIFFICULTIES = ["easy", "medium", "hard"]
 
 
