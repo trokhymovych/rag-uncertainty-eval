@@ -6,7 +6,7 @@ output_dir: outputs/generation
 
 n_rows: null
 save_every: 1
-sleep_between_calls: 0.2
+sleep_between_calls: 0.1
 max_retries: 3
 
 columns:

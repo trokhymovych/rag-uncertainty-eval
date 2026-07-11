@@ -94,11 +94,16 @@ def main() -> None:
             mode = str(df["context_mode"].dropna().iloc[0])
             answer_col = cfg["context_modes"].get(mode, {}).get("answer_col")
         if not answer_col:
-            # Fallback for common names
-            for cand in ["answer_with_distractor_and_gold", "answer_with_distractor", "answer"]:
+            # Prefer distractor+gold over distractor-only; then any answer_ column
+            priority = ["answer_with_distractor_and_gold", "answer_with_distractor", "answer"]
+            for cand in priority:
                 if cand in df.columns:
                     answer_col = cand
                     break
+            if not answer_col:
+                answer_col = next(
+                    (c for c in df.columns if c.startswith("answer_")), None
+                )
     if not answer_col or answer_col not in df.columns:
         raise ValueError(f"Could not infer answer column. Available columns: {list(df.columns)}")
 

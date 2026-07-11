@@ -1,0 +1,70 @@
+#!/usr/bin/env bash
+# Judge all generation CSVs with Together AI.
+# Usage: bash run_judge_all.sh
+# Override defaults with env vars:
+#   JUDGE_MODEL  — default: Qwen/Qwen3.7-Plus
+#   JUDGE_PROVIDER — default: together
+#   OUTPUT_SUFFIX — default: __judged (appended to input stem)
+
+set -euo pipefail
+
+JUDGE_MODEL="${JUDGE_MODEL:-Qwen/Qwen3.7-Plus}"
+JUDGE_PROVIDER="${JUDGE_PROVIDER:-together}"
+PYTHON="${PYTHON:-.venv/bin/python}"
+CONFIG="configs/experiments.yaml"
+OUTPUT_DIR="data/judge step/qwen"
+
+mkdir -p "$OUTPUT_DIR"
+
+# ── Files to judge ────────────────────────────────────────────────────────────
+# Add or remove paths/globs as needed.
+INPUT_FILES=(
+  # Multilingual API model files (data/generation step/)
+  "data/generation step/multilingual_claude_sonnet4_answers.csv"
+  "data/generation step/multilingual_claude_sonnet4_answers_advanced.csv"
+  "data/generation step/multilingual_gemini31_flash_lite_answers.csv"
+  "data/generation step/multilingual_gemini31_flash_lite_answers_advanced.csv"
+  "data/generation step/multilingual_gemma4_answers.csv"
+  "data/generation step/multilingual_gemma4_answers_advanced.csv"
+  "data/generation step/multilingual_gpt54mini_answers.csv"
+  "data/generation step/multilingual_gpt54mini_answers_advanced.csv"
+  "data/generation step/multilingual_qwen36_answers.csv"
+  "data/generation step/multilingual_qwen36_answers_advanced.csv"
+)
+
+TOTAL=${#INPUT_FILES[@]}
+DONE=0
+FAILED=()
+
+for INPUT in "${INPUT_FILES[@]}"; do
+  if [[ ! -f "$INPUT" ]]; then
+    echo "⚠️  File not found, skipping: $INPUT"
+    continue
+  fi
+
+  # Output to dedicated judge directory, preserving the input filename
+  BASENAME="$(basename "${INPUT%.*}")"
+  OUTPUT="${OUTPUT_DIR}/${BASENAME}__judged.csv"
+
+  echo "────────────────────────────────────────────────"
+  echo "[$((DONE+1))/$TOTAL] $INPUT"
+  echo "  → $OUTPUT"
+
+  PYTHONPATH=src "$PYTHON" -m rag_eval.run_judge \
+    --config "$CONFIG" \
+    --input "$INPUT" \
+    --output "$OUTPUT" \
+    --judge-provider "$JUDGE_PROVIDER" \
+    --model "$JUDGE_MODEL" \
+    --save-every 10 \
+    && DONE=$((DONE+1)) \
+    || { echo "❌  FAILED: $INPUT"; FAILED+=("$INPUT"); }
+done
+
+echo "════════════════════════════════════════════════"
+echo "Done: $DONE / $TOTAL"
+if [[ ${#FAILED[@]} -gt 0 ]]; then
+  echo "Failed files:"
+  for f in "${FAILED[@]}"; do echo "  $f"; done
+  exit 1
+fi
