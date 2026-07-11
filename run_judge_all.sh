@@ -2,14 +2,15 @@
 # Judge all generation CSVs with Together AI.
 # Usage: bash run_judge_all.sh
 # Override defaults with env vars:
-#   JUDGE_MODEL  — default: Qwen/Qwen3.7-Plus
+#   JUDGE_MODEL    — default: Qwen/Qwen3.7-Plus
 #   JUDGE_PROVIDER — default: together
-#   OUTPUT_SUFFIX — default: __judged (appended to input stem)
+#   WORKERS        — default: 10 (parallel API calls per file)
 
 set -euo pipefail
 
 JUDGE_MODEL="${JUDGE_MODEL:-Qwen/Qwen3.7-Plus}"
 JUDGE_PROVIDER="${JUDGE_PROVIDER:-together}"
+WORKERS="${WORKERS:-10}"
 PYTHON="${PYTHON:-.venv/bin/python}"
 CONFIG="configs/experiments.yaml"
 OUTPUT_DIR="data/judge step/qwen"
@@ -56,6 +57,7 @@ for INPUT in "${INPUT_FILES[@]}"; do
     --output "$OUTPUT" \
     --judge-provider "$JUDGE_PROVIDER" \
     --model "$JUDGE_MODEL" \
+    --workers "$WORKERS" \
     --save-every 10 \
     && DONE=$((DONE+1)) \
     || { echo "❌  FAILED: $INPUT"; FAILED+=("$INPUT"); }
