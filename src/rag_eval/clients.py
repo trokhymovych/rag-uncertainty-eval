@@ -4,9 +4,12 @@ import os
 from dataclasses import dataclass
 from typing import Any
 
+from dotenv import load_dotenv
 from google import genai
 from anthropic import Anthropic
 from openai import OpenAI
+
+load_dotenv()
 
 
 @dataclass
@@ -160,6 +163,42 @@ class OllamaProvider(BaseProvider):
         return (result.get("message", {}).get("content") or "").strip()
 
 
+class TogetherProvider(BaseProvider):
+    def __init__(self, api_key_env: str = "TOGETHER_API_KEY") -> None:
+        from together import Together
+
+        api_key = os.getenv(api_key_env)
+        if not api_key:
+            raise ValueError(f"Environment variable {api_key_env} is not set.")
+        self.client = Together(api_key=api_key)
+
+    def generate(self, request: GenerationRequest) -> str:
+        cfg = request.model_cfg
+        kwargs: dict[str, Any] = {
+            "model": cfg["model"],
+            "messages": [
+                {"role": "system", "content": request.system_prompt},
+                {"role": "user", "content": request.user_prompt},
+            ],
+        }
+        if cfg.get("temperature") is not None:
+            kwargs["temperature"] = cfg["temperature"]
+        if cfg.get("max_output_tokens") is not None:
+            kwargs["max_tokens"] = int(cfg["max_output_tokens"])
+        # Disable chain-of-thought reasoning for thinking-capable models
+        if cfg.get("think") is False:
+            kwargs["chat_template_kwargs"] = {"thinking": False}
+
+        kwargs["stream"] = True
+        stream = self.client.chat.completions.create(**kwargs)
+        parts = []
+        for chunk in stream:
+            delta = chunk.choices[0].delta.content if chunk.choices else None
+            if delta:
+                parts.append(delta)
+        return "".join(parts).strip()
+
+
 def make_provider(model_cfg: dict[str, Any]) -> BaseProvider:
     provider = model_cfg["provider"].lower()
     api_key_env = model_cfg.get("api_key_env")
@@ -172,5 +211,7 @@ def make_provider(model_cfg: dict[str, Any]) -> BaseProvider:
         return GeminiProvider(api_key_env or "GEMINI_API_KEY")
     if provider == "ollama":
         return OllamaProvider(model_cfg.get("base_url", "http://localhost:11434/v1"))
+    if provider == "together":
+        return TogetherProvider(api_key_env or "TOGETHER_API_KEY")
 
     raise ValueError(f"Unsupported provider: {provider}")

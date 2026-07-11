@@ -8,8 +8,11 @@ from pathlib import Path
 from typing import Any
 
 import pandas as pd
+from dotenv import load_dotenv
 from tqdm.auto import tqdm
 from openai import OpenAI
+
+load_dotenv()
 
 from rag_eval.columns import detect_columns, require_columns
 from rag_eval.config import load_config
@@ -70,14 +73,18 @@ def main() -> None:
     parser.add_argument("--output", type=Path, default=None, help="Output judged CSV. Default: input stem + __judged.csv")
     parser.add_argument("--answer-col", type=str, default=None, help="Answer column to judge. If omitted, inferred from context_mode column.")
     parser.add_argument("--model", type=str, default="gpt-5", help="Judge model name.")
-    parser.add_argument("--judge-provider", type=str, default="openai", choices=["openai", "ollama"], help="Provider for judge model.")
+    parser.add_argument("--judge-provider", type=str, default="openai", choices=["openai", "ollama", "together"], help="Provider for judge model.")
     parser.add_argument("--judge-base-url", type=str, default="http://localhost:11434/v1", help="Base URL for Ollama judge.")
+    parser.add_argument("--language", type=str, default=None, help="Filter rows by language column value (e.g. 'en').")
     parser.add_argument("--max-retries", type=int, default=3)
     parser.add_argument("--save-every", type=int, default=1)
     args = parser.parse_args()
 
     cfg = load_config(args.config)
     df = pd.read_csv(args.input)
+    if args.language and "language" in df.columns:
+        df = df[df["language"] == args.language].reset_index(drop=True)
+        print(f"Filtered to language='{args.language}': {len(df)} rows")
     detected_cols = detect_columns(df, cfg["columns"])
     require_columns(df, detected_cols, required=["query", "gold_passage"])
 
@@ -106,11 +113,17 @@ def main() -> None:
         if col not in judged_df.columns:
             judged_df[col] = pd.NA
 
-    if args.judge_provider != "ollama":
+    if args.judge_provider == "openai":
         api_key = os.getenv("OPENAI_API_KEY")
         if not api_key:
             raise ValueError("OPENAI_API_KEY is not set.")
         client = OpenAI(api_key=api_key)
+    elif args.judge_provider == "together":
+        from together import Together
+        api_key = os.getenv("TOGETHER_API_KEY")
+        if not api_key:
+            raise ValueError("TOGETHER_API_KEY is not set.")
+        client = Together(api_key=api_key)
 
     indices = list(judged_df.loc[is_missing(judged_df["judge_label"])].index)
     print(f"Loaded {len(judged_df)} rows. Rows to judge: {len(indices)}")
@@ -119,6 +132,10 @@ def main() -> None:
 
     for n, idx in enumerate(tqdm(indices, desc="judging"), start=1):
         prompt = build_judge_prompt(judged_df.loc[idx], detected_cols, answer_col)
+        if n == 1:
+            print(f"\n=== Debug Row {idx} ===")
+            print(f"Prompt:\n{prompt}\n")
+
         label, reasoning, raw_json, error = "", "", "", ""
 
         for attempt in range(1, args.max_retries + 1):
@@ -142,6 +159,23 @@ def main() -> None:
                     )
                     with _urllib.urlopen(req) as resp:
                         raw_text = json.loads(resp.read()).get("message", {}).get("content", "")
+                elif args.judge_provider == "together":
+                    stream = client.chat.completions.create(
+                        model=args.model,
+                        messages=[
+                            {"role": "system", "content": JUDGE_SYSTEM_PROMPT},
+                            {"role": "user", "content": prompt},
+                        ],
+                        response_format={"type": "json_object"},
+                        chat_template_kwargs={"thinking": False},
+                        stream=True,
+                    )
+                    parts = []
+                    for chunk in stream:
+                        delta = chunk.choices[0].delta.content if chunk.choices else None
+                        if delta:
+                            parts.append(delta)
+                    raw_text = "".join(parts).strip()
                 else:
                     response = client.responses.create(
                         model=args.model,
@@ -174,7 +208,7 @@ def main() -> None:
         judged_df.at[idx, "judge_reasoning"] = reasoning if label else pd.NA
         judged_df.at[idx, "judge_raw_json"] = raw_json
         judged_df.at[idx, "judge_error"] = error
-
+        
         if n % args.save_every == 0:
             judged_df.to_csv(output, index=False)
 

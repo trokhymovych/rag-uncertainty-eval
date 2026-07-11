@@ -5,3 +5,7 @@ seaborn
 numpy
 scikit-learn
 openai
+anthropic
+google-genai
+together
+python-dotenv

@@ -18,8 +18,13 @@ def find_col(dataframe: pd.DataFrame, candidates: list[str]) -> str | None:
 
     for cand in candidates:
         key = normalize_col(cand)
+        key_parts = key.split("_")
         for norm_col, original_col in normalized_to_original.items():
-            if key in norm_col:
+            col_parts = norm_col.split("_")
+            # whole-word substring: all parts of candidate must appear as a contiguous
+            # slice of the column's underscore-split parts
+            n = len(key_parts)
+            if any(col_parts[i : i + n] == key_parts for i in range(len(col_parts) - n + 1)):
                 return original_col
 
     return None

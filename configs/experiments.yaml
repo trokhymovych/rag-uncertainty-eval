@@ -10,10 +10,10 @@ sleep_between_calls: 0.2
 max_retries: 3
 
 columns:
-  query: [query, question, user_query]
-  distractor: [distractor, distractor_text, distractor_passage, distractor_passage_text, negative, negative_text, negative_passage, negative_passage_text, hard_negative, hard_negative_text, hard_negative_passage, hard_negative_passage_text]
-  gold_passage: [gold_passage_text, gold_passage, gold_pass, gold_context, gold passage, gold_passage_content, positive, positive_text, positive_passage, positive_passage_text]
-  gold_title: [gold_passage_title, gold_title, gold document title, gold_doc_title, positive_title, positive_passage_title, title]
+  query: [query]
+  distractor: [distractor_text]
+  gold_passage: [gold_generation_text]
+  gold_judge_passage: [gold_judge_text]
 
 prompt_variants:
   simple:
