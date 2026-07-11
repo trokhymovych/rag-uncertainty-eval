@@ -1,0 +1,51 @@
+input_csv: data/rag_eval_multilingual_eval.csv
+output_dir: outputs/generation_qwen_all
+language_filter: null
+
+n_rows: null
+save_every: 10
+sleep_between_calls: 0.0
+max_retries: 3
+
+columns:
+  query: [query]
+  distractor: [distractor_text]
+  gold_passage: [gold_generation_text]
+  gold_judge_passage: [gold_judge_text]
+
+
+prompt_variants:
+  simple:
+    system_prompt: |-
+      You are a question-answering system for RAG evaluation.
+      Use only the provided context passage.
+      Do not use outside knowledge.
+      Keep the answer concise.
+  advanced:
+    system_prompt: |-
+      You are a question-answering system for RAG evaluation.
+      Use only the provided context passage.
+      Do not use outside knowledge.
+      If the context does not contain enough information to answer the question, say: "I don't know based on the provided context."
+      Keep the answer concise.
+
+context_modes:
+  distractor:
+    answer_col: answer_with_distractor
+    include_distractor: true
+    include_gold: false
+  distractor_plus_gold:
+    answer_col: answer_with_distractor_and_gold
+    include_distractor: true
+    include_gold: true
+
+models:
+  qwen3.6:27b:
+    provider: ollama
+    base_url: http://localhost:11434
+    model: qwen3.6:27b
+    temperature: 0
+    max_output_tokens: 256
+    think: false
+
+only: null
