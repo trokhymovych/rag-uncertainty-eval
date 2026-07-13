@@ -1,19 +1,19 @@
 #!/usr/bin/env bash
-# Judge all generation CSVs with Together AI.
+# Judge all generation CSVs with OpenAI.
 # Usage: bash run_judge_all.sh
 # Override defaults with env vars:
-#   JUDGE_MODEL    — default: Qwen/Qwen3.7-Plus
-#   JUDGE_PROVIDER — default: together
-#   WORKERS        — default: 10 (parallel API calls per file)
+#   JUDGE_MODEL    — default: gpt-5.4-mini-2026-03-17
+#   JUDGE_PROVIDER — default: openai
+#   WORKERS        — default: 4 (parallel API calls per file)
 
 set -euo pipefail
 
-JUDGE_MODEL="${JUDGE_MODEL:-Qwen/Qwen3.7-Plus}"
-JUDGE_PROVIDER="${JUDGE_PROVIDER:-together}"
+JUDGE_MODEL="${JUDGE_MODEL:-gpt-5.4-mini}"
+JUDGE_PROVIDER="${JUDGE_PROVIDER:-azure}"
 WORKERS="${WORKERS:-10}"
 PYTHON="${PYTHON:-.venv/bin/python}"
 CONFIG="configs/experiments.yaml"
-OUTPUT_DIR="data/judge step/qwen"
+OUTPUT_DIR="data/judge step/openai"
 
 mkdir -p "$OUTPUT_DIR"
 
@@ -31,6 +31,12 @@ INPUT_FILES=(
   "data/generation step/multilingual_gpt54mini_answers_advanced.csv"
   "data/generation step/multilingual_qwen36_answers.csv"
   "data/generation step/multilingual_qwen36_answers_advanced.csv"
+
+  # Multilingual open-source model files (data/generation step/withgold)
+  "data/generation step/withgold/gemma4_26b__advanced__distractor_plus_gold.csv"
+  "data/generation step/withgold/gemma4_26b__simple__distractor_plus_gold.csv"
+  "data/generation step/withgold/qwen3.6:27b__advanced__distractor_plus_gold.csv"
+  "data/generation step/withgold/qwen3.6:27b__simple__distractor_plus_gold.csv"
 )
 
 TOTAL=${#INPUT_FILES[@]}
