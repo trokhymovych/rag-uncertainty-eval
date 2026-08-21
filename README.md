@@ -1,6 +1,6 @@
-# Does the RAG Know It Doesn't Know? IR Benchmarks for RAG Uncertainty Evaluation
+# Does RAG Answer Without Sufficient Evidence? Reusing IR Benchmarks for RAG Uncertainty Evaluation
 
-Code for **“Does the RAG Know It Doesn't Know? IR Benchmarks for RAG Uncertainty Evaluation”**.
+Code for the paper **"Does RAG Answer Without Sufficient Evidence? Reusing IR Benchmarks for RAG Uncertainty Evaluation"**.
 
 [![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](LICENSE)
 [![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/)
@@ -9,79 +9,9 @@ Code for **“Does the RAG Know It Doesn't Know? IR Benchmarks for RAG Uncertain
 
 ## Overview
 
-This repository contains code for evaluating uncertainty awareness in Retrieval-Augmented Generation (RAG) systems.
+This repository implements a methodology for converting IR hard-negative datasets into difficulty-stratified RAG uncertainty benchmarks. We use hard negatives from **MIRACL Hard Negatives** across 14 languages, graded by similarity to the gold passage, and evaluate whether LLMs abstain or answer incorrectly when given a topically relevant but answer-free context.
 
-The main research question is:
-
-> When a model receives a topically relevant but answer-free retrieved passage, does it abstain, hallucinate, hedge, or answer correctly?
-
-We convert hard negatives from an information retrieval benchmark into a controlled RAG uncertainty benchmark. Each example contains:
-
-- a question,
-- a gold passage used only for evaluation,
-- a hard-negative distractor passage used as retrieved context.
-
-The model answers using the retrieved context, and its response is classified into one of four labels:
-
-- `ABSTAIN`
-- `HALLUCINATE`
-- `HEDGE`
-- `CORRECT`
-
----
-
-## Dataset
-
-The benchmark is built from the English split of **MIRACL Hard Negatives**.
-
-Distractor passages are stratified into three difficulty levels using TF-IDF cosine similarity between the distractor passage and the gold passage:
-
-- `easy`
-- `medium`
-- `hard`
-
-The final benchmark contains 300 examples:
-
-```text
-100 easy distractors
-100 medium distractors
-100 hard distractors
-```
-
----
-
-## Experiments
-
-The pipeline evaluates four generation models:
-
-```text
-GPT-5
-GPT-4.1
-Claude Sonnet 4
-Gemini 3.1 Flash-Lite
-```
-
-Each model is tested with two prompt variants:
-
-```text
-simple
-advanced
-```
-
-and two context modes:
-
-```text
-distractor
-distractor_plus_gold
-```
-
-This gives:
-
-```text
-4 models × 2 prompts × 2 context modes = 16 generation experiments
-```
-
-Generated answers are classified using GPT-5 as an LLM-as-a-judge.
+Each benchmark example contains a question, a hard-negative distractor passage (used as retrieved context), and a gold reference passage (used for evaluation only). Model responses are classified as `ABSTAIN`, `CORRECT`, or `INCORRECT` using an ensemble of three LLM judges validated against expert human annotation.
 
 ---
 
@@ -89,23 +19,37 @@ Generated answers are classified using GPT-5 as an LLM-as-a-judge.
 
 ```text
 rag-uncertainty-eval/
-├── configs/
-│   └── experiments.yaml
+├── configs/                        # Experiment configuration files (system prompts inside)
+│   ├── experiments.yaml            # Frontier models (GPT, Gemini, Claude)
+│   ├── experiments_en_ollama.yaml  # Ollama inference (English)
+│   ├── experiments_gemma_all.yaml  # Gemma 4 26B (all languages)
+│   └── experiments_qwen_all.yaml   # Qwen3.6 27B (all languages)
+├── data/
+│   ├── rag_eval_multilingual_eval.csv  # Main multilingual benchmark (14 languages)
+│   ├── manual_labeling_samples.csv     # Subset prepared for human annotation
+│   ├── expert_annotation/              # Expert annotator labels
+│   ├── generation step/                # Raw generation outputs
+│   └── judge step/                     # Judged generation outputs
 ├── notebooks/
-│   ├── 01-miracl-hard-negatives-eda.ipynb
-│   └── 02-eval-dataset-construction.ipynb
-├── results/
+│   ├── 01_data_preparation.ipynb       # Benchmark construction from MIRACL
+│   ├── 02_check_generations.ipynb      # Sanity checks on generated answers
+│   ├── 03_prepare_manual_labeling.ipynb
+│   ├── 04_annotator_agreement.ipynb    # Inter-annotator agreement analysis
+│   └── 05_paper_figures.ipynb          # All figures and tables in the paper
+├── outputs/                        # Generated outputs, analysis tables, figures
+├── resources/
+│   └── annotation_guidlines.md     # Human annotation guidelines (label definitions, priority order)
 ├── src/
 │   └── rag_eval/
-│       ├── __init__.py
-│       ├── analyze.py
-│       ├── clients.py
-│       ├── columns.py
-│       ├── config.py
-│       ├── prompts.py
-│       ├── run_generation.py
-│       └── run_judge.py
-├── README.md
+│       ├── prompts.py              # Prompt construction for generation and judging
+│       ├── clients.py              # API clients: OpenAI, Anthropic, Gemini, Ollama, Together
+│       ├── run_generation.py       # Answer generation script
+│       ├── run_judge.py            # LLM-as-a-judge classification script
+│       ├── analyze.py              # Aggregation and metrics by difficulty tier
+│       ├── config.py               # Config loading utilities
+│       └── columns.py              # CSV column detection utilities
+├── run_judge_all.sh                # Batch judging with OpenAI
+├── run_judge_all_gemini.sh         # Batch judging with Gemini
 ├── requirements.txt
 └── LICENSE
 ```
@@ -114,222 +58,98 @@ rag-uncertainty-eval/
 
 ## Setup
 
-Clone the repository:
-
 ```bash
-git clone https://github.com/<your-username>/rag-uncertainty-eval.git
+git clone https://github.com/anonymous/rag-uncertainty-eval.git
 cd rag-uncertainty-eval
-```
-
-Create and activate a virtual environment:
-
-```bash
-python -m venv .venv
-source .venv/bin/activate
-```
-
-Install dependencies:
-
-```bash
+python -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
-```
-
-Add the project source path:
-
-```bash
 export PYTHONPATH=$PWD/src:$PYTHONPATH
 ```
 
-Set API keys:
+Set API keys (or place them in a `.env` file):
 
 ```bash
-export OPENAI_API_KEY="your-openai-api-key"
-export ANTHROPIC_API_KEY="your-anthropic-api-key"
-export GEMINI_API_KEY="your-gemini-api-key"
+export OPENAI_API_KEY="..."
+export ANTHROPIC_API_KEY="..."
+export GEMINI_API_KEY="..."
 ```
+
+For open-weight models (Qwen, Gemma), install and run [Ollama](https://ollama.com/) locally and pull the required models.
 
 ---
 
 ## Configuration
 
-Main experiment settings are stored in:
+Each YAML file in `configs/` defines a full experiment: input data, models, prompt variants, context modes, and output settings. **System prompts are stored directly inside the config files** under `prompt_variants.<name>.system_prompt`.
 
-```text
-configs/experiments.yaml
-```
+The two prompt variants used in the paper:
 
-The configuration file controls:
+- **Simple** — instructs the model to use only the provided context and keep the answer concise.
+- **Advanced** — adds an explicit abstention instruction: *"If the context does not contain enough information to answer the question, say: 'I don't know based on the provided context.'"*
 
-- input CSV path,
-- output directory,
-- generation models,
-- prompt variants,
-- context modes,
-- column aliases,
-- retry behavior,
-- saving behavior.
+The two context modes:
 
-The expected input file is:
+- **distractor** — model receives only the hard-negative distractor as context.
+- **distractor_plus_gold** — model receives both the distractor and the correct passage (robustness experiment).
 
-```text
-data/rag_eval_en_300.csv
-```
-
-The input CSV should contain columns for:
-
-- question or query,
-- distractor passage,
-- gold passage,
-- optional gold passage title,
-- difficulty label.
+See [`src/rag_eval/prompts.py`](src/rag_eval/prompts.py) for prompt assembly logic and the judge prompt.
 
 ---
 
-## Running Generation
+## Running the Pipeline
 
-Run all configured generation experiments:
-
-```bash
-python src/rag_eval/run_generation.py \
-  --config configs/experiments.yaml
-```
-
-Run generation with a custom input file:
+### 1. Generate answers
 
 ```bash
-python src/rag_eval/run_generation.py \
-  --config configs/experiments.yaml \
-  --input data/rag_eval_en_300.csv
+python src/rag_eval/run_generation.py --config configs/experiments.yaml
 ```
 
-Run only a small test sample:
+Outputs one CSV per experiment combination (`<model>__<prompt>__<context_mode>.csv`) in the directory set by `output_dir` in the config. The script is resumable — it skips rows that already have answers.
 
-```bash
-python src/rag_eval/run_generation.py \
-  --config configs/experiments.yaml \
-  --n-rows 5
-```
+### 2. Judge answers
 
-Save outputs to a custom directory:
-
-```bash
-python src/rag_eval/run_generation.py \
-  --config configs/experiments.yaml \
-  --output-dir outputs/generation
-```
-
-Each experiment is saved as a separate CSV file:
-
-```text
-<model>__<prompt>__<context_mode>.csv
-```
-
-Example:
-
-```text
-gpt5__simple__distractor.csv
-gpt5__advanced__distractor_plus_gold.csv
-```
-
-The generation script supports resuming. If an output file already exists, it continues from missing answers instead of rerunning completed rows.
-
----
-
-## Running the LLM Judge
-
-After generation, classify model answers with the judge:
+Classify answers as `ABSTAIN`, `CORRECT`, or `INCORRECT`:
 
 ```bash
 python src/rag_eval/run_judge.py \
   --config configs/experiments.yaml \
-  --input outputs/generation/gpt5__simple__distractor.csv
+  --input outputs/generation/gpt54mini__simple__distractor.csv
 ```
 
-The judged file is saved with `__judged` added to the filename:
-
-```text
-gpt5__simple__distractor__judged.csv
-```
-
-You can also specify the output path manually:
+Output is saved with `__judged` appended to the filename. To judge all files at once:
 
 ```bash
-python src/rag_eval/run_judge.py \
-  --config configs/experiments.yaml \
-  --input outputs/generation/gpt5__simple__distractor.csv \
-  --output outputs/judged/gpt5__simple__distractor__judged.csv
+bash run_judge_all.sh        # uses OpenAI judge
+bash run_judge_all_gemini.sh # uses Gemini judge
 ```
 
-The judge assigns one of four labels:
+The paper uses a majority vote of three judges: GPT-5.4-mini, Gemini-3.1-flash-lite, and Qwen3.7 Plus.
 
-```text
-ABSTAIN
-HALLUCINATE
-HEDGE
-CORRECT
-```
-
----
-
-## Analyzing Results
-
-Compute counts and percentages by difficulty level:
+### 3. Analyze results
 
 ```bash
 python src/rag_eval/analyze.py \
-  --input outputs/generation/gpt5__simple__distractor__judged.csv \
-  --output-dir outputs/analysis/gpt5__simple__distractor
+  --input outputs/judged/gpt54mini__simple__distractor__judged.csv \
+  --output-dir outputs/tables/gpt54mini__simple__distractor
 ```
 
-This creates:
+Produces `judge_counts_by_difficulty.csv` and `judge_percentages_by_difficulty.csv`.
 
-```text
-judge_counts_by_difficulty.csv
-judge_percentages_by_difficulty.csv
-judge_summary_by_difficulty.csv
-```
+All figures and tables from the paper are reproduced in [`notebooks/05_paper_figures.ipynb`](notebooks/05_paper_figures.ipynb).
 
 ---
 
-## Prompt Variants
+## Human Annotation Guidelines
 
-### Simple prompt
-
-The simple prompt instructs the model to answer using only the provided context and keep the answer concise.
-
-### Advanced prompt
-
-The advanced prompt adds an explicit abstention instruction:
-
-```text
-If the context does not contain enough information to answer the question, say:
-"I don't know based on the provided context."
-```
-
-This allows us to test whether explicit abstention instructions reduce hallucination under misleading retrieval.
+Annotation guidelines used by expert annotators for judge validation are in [`resources/annotation_guidlines.md`](resources/annotation_guidlines.md). Each response is assigned exactly one label (`ABSTAIN`, `CORRECT`, `INCORRECT`) based on the gold reference only. Labels are applied in priority order: ABSTAIN > CORRECT > INCORRECT.
 
 ---
-
-## Context Modes
-
-### Distractor-only
-
-The model receives only the hard-negative distractor passage as context.
-
-This setting tests whether the model can recognize that the retrieved passage is insufficient.
-
-### Distractor + gold
-
-The model receives both the distractor passage and the gold passage.
-
-This setting tests whether the model can recover the correct answer when relevant evidence is mixed with misleading retrieved context.
-
----
-
 
 ## Citation
 
+```bibtex
 TBD
+```
 
 ---
 
