@@ -9,3 +9,10 @@ anthropic
 google-genai
 together
 python-dotenv
+pyyaml
+tqdm
+statsmodels
+huggingface_hub
+sentence-transformers
+transformers
+torch

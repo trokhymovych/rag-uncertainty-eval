@@ -1,158 +1,61 @@
 # Does RAG Answer Without Sufficient Evidence? Reusing IR Benchmarks for RAG Uncertainty Evaluation
 
-Code for the paper **"Does RAG Answer Without Sufficient Evidence? Reusing IR Benchmarks for RAG Uncertainty Evaluation"**.
+Code for the paper **"Does RAG Answer Without Sufficient Evidence? Reusing IR Benchmarks for RAG Uncertainty Evaluation"** (WSDM 2027 (Findings), [doi:10.1145/3862322.3863847](https://doi.org/10.1145/3862322.3863847)).
 
-[![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](LICENSE)
-[![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/)
+**Dataset:** [huggingface.co/datasets/trokhymovych/miracl-distractors](https://huggingface.co/datasets/trokhymovych/miracl-distractors) (benchmark, all model responses, judge labels, human annotations).
 
----
+We turn MIRACL hard negatives (passages explicitly judged non-relevant) into a benchmark of distractors graded Easy / Medium / Hard by similarity to the answer, across 14 languages. We then test whether LLMs abstain or answer incorrectly when given only such a distractor, or a distractor next to the correct passage. Responses are labeled `ABSTAIN`, `CORRECT`, or `INCORRECT` by three LLM judges validated against expert annotation.
 
-## Overview
-
-This repository implements a methodology for converting IR hard-negative datasets into difficulty-stratified RAG uncertainty benchmarks. We use hard negatives from **MIRACL Hard Negatives** across 14 languages, graded by similarity to the gold passage, and evaluate whether LLMs abstain or answer incorrectly when given a topically relevant but answer-free context.
-
-Each benchmark example contains a question, a hard-negative distractor passage (used as retrieved context), and a gold reference passage (used for evaluation only). Model responses are classified as `ABSTAIN`, `CORRECT`, or `INCORRECT` using an ensemble of three LLM judges validated against expert human annotation.
-
----
-
-## Repository Structure
+## Repository
 
 ```text
-rag-uncertainty-eval/
-├── configs/                        # Experiment configuration files (system prompts inside)
-│   ├── experiments.yaml            # Frontier models (GPT, Gemini, Claude)
-│   ├── experiments_en_ollama.yaml  # Ollama inference (English)
-│   ├── experiments_gemma_all.yaml  # Gemma 4 26B (all languages)
-│   └── experiments_qwen_all.yaml   # Qwen3.6 27B (all languages)
-├── data/
-│   ├── rag_eval_multilingual_eval.csv  # Main multilingual benchmark (14 languages)
-│   ├── manual_labeling_samples.csv     # Subset prepared for human annotation
-│   ├── expert_annotation/              # Expert annotator labels
-│   ├── generation step/                # Raw generation outputs
-│   └── judge step/                     # Judged generation outputs
-├── notebooks/
-│   ├── 01_data_preparation.ipynb       # Benchmark construction from MIRACL
-│   ├── 02_check_generations.ipynb      # Sanity checks on generated answers
-│   ├── 03_prepare_manual_labeling.ipynb
-│   ├── 04_annotator_agreement.ipynb    # Inter-annotator agreement analysis
-│   └── 05_paper_figures.ipynb          # All figures and tables in the paper
-├── outputs/                        # Generated outputs, analysis tables, figures
-├── resources/
-│   └── annotation_guidlines.md     # Human annotation guidelines (label definitions, priority order)
-├── src/
-│   └── rag_eval/
-│       ├── prompts.py              # Prompt construction for generation and judging
-│       ├── clients.py              # API clients: OpenAI, Anthropic, Gemini, Ollama, Together
-│       ├── run_generation.py       # Answer generation script
-│       ├── run_judge.py            # LLM-as-a-judge classification script
-│       ├── analyze.py              # Aggregation and metrics by difficulty tier
-│       ├── config.py               # Config loading utilities
-│       └── columns.py              # CSV column detection utilities
-├── run_judge_all.sh                # Batch judging with OpenAI
-├── run_judge_all_gemini.sh         # Batch judging with Gemini
-├── requirements.txt
-└── LICENSE
+configs/      Experiment configs (models, prompts, context modes)
+data/         Benchmark, generations, judge labels, expert annotations; additional/ = gold-only control
+notebooks/    experiments and analysis
+src/rag_eval/ Generation and LLM-judge scripts
 ```
-
----
 
 ## Setup
 
 ```bash
-git clone https://github.com/anonymous/rag-uncertainty-eval.git
+git clone https://github.com/trokhymovych/rag-uncertainty-eval.git
 cd rag-uncertainty-eval
 python -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
 export PYTHONPATH=$PWD/src:$PYTHONPATH
 ```
 
-Set API keys (or place them in a `.env` file):
+Put API keys in a `.env` file (`OPENAI_API_KEY` or `AZURE_OPENAI_*`, `ANTHROPIC_API_KEY`, `GEMINI_API_KEY`, `TOGETHER_API_KEY`). Open-weight models run locally with [Ollama](https://ollama.com/).
+
+## Reproduce
+
+All generations and judge labels are already in `data/`, so the paper results can be reproduced without any API calls by running [`notebooks/05_paper_results.ipynb`](notebooks/05_paper_results.ipynb) (and [`04_annotator_agreement.ipynb`](notebooks/04_annotator_agreement.ipynb)).
+
+To rerun the pipeline:
 
 ```bash
-export OPENAI_API_KEY="..."
-export ANTHROPIC_API_KEY="..."
-export GEMINI_API_KEY="..."
+python src/rag_eval/run_generation.py --config configs/experiments.yaml          # generate answers
+python src/rag_eval/run_judge.py --config configs/experiments.yaml --input <generations.csv>   # judge them
+bash run_additional_gold_only.sh                                                  # gold-only control
 ```
 
-For open-weight models (Qwen, Gemma), install and run [Ollama](https://ollama.com/) locally and pull the required models.
-
----
-
-## Configuration
-
-Each YAML file in `configs/` defines a full experiment: input data, models, prompt variants, context modes, and output settings. **System prompts are stored directly inside the config files** under `prompt_variants.<name>.system_prompt`.
-
-The two prompt variants used in the paper:
-
-- **Simple** — instructs the model to use only the provided context and keep the answer concise.
-- **Advanced** — adds an explicit abstention instruction: *"If the context does not contain enough information to answer the question, say: 'I don't know based on the provided context.'"*
-
-The two context modes:
-
-- **distractor** — model receives only the hard-negative distractor as context.
-- **distractor_plus_gold** — model receives both the distractor and the correct passage (robustness experiment).
-
-See [`src/rag_eval/prompts.py`](src/rag_eval/prompts.py) for prompt assembly logic and the judge prompt.
-
----
-
-## Running the Pipeline
-
-### 1. Generate answers
-
-```bash
-python src/rag_eval/run_generation.py --config configs/experiments.yaml
-```
-
-Outputs one CSV per experiment combination (`<model>__<prompt>__<context_mode>.csv`) in the directory set by `output_dir` in the config. The script is resumable — it skips rows that already have answers.
-
-### 2. Judge answers
-
-Classify answers as `ABSTAIN`, `CORRECT`, or `INCORRECT`:
-
-```bash
-python src/rag_eval/run_judge.py \
-  --config configs/experiments.yaml \
-  --input outputs/generation/gpt54mini__simple__distractor.csv
-```
-
-Output is saved with `__judged` appended to the filename. To judge all files at once:
-
-```bash
-bash run_judge_all.sh        # uses OpenAI judge
-bash run_judge_all_gemini.sh # uses Gemini judge
-```
-
-The paper uses a majority vote of three judges: GPT-5.4-mini, Gemini-3.1-flash-lite, and Qwen3.7 Plus.
-
-### 3. Analyze results
-
-```bash
-python src/rag_eval/analyze.py \
-  --input outputs/judged/gpt54mini__simple__distractor__judged.csv \
-  --output-dir outputs/tables/gpt54mini__simple__distractor
-```
-
-Produces `judge_counts_by_difficulty.csv` and `judge_percentages_by_difficulty.csv`.
-
-All figures and tables from the paper are reproduced in [`notebooks/05_paper_figures.ipynb`](notebooks/05_paper_figures.ipynb).
-
----
-
-## Human Annotation Guidelines
-
-Annotation guidelines used by expert annotators for judge validation are in [`resources/annotation_guidlines.md`](resources/annotation_guidlines.md). Each response is assigned exactly one label (`ABSTAIN`, `CORRECT`, `INCORRECT`) based on the gold reference only. Labels are applied in priority order: ABSTAIN > CORRECT > INCORRECT.
-
----
+Prompts are in the config files; the judge prompt is in [`src/rag_eval/prompts.py`](src/rag_eval/prompts.py). Human annotation guidelines: [`resources/annotation_guidlines.md`](resources/annotation_guidlines.md).
 
 ## Citation
 
 ```bibtex
-TBD
+@inproceedings{trokhymovych2027rag,
+  title     = {Does {RAG} Answer Without Sufficient Evidence? Reusing {IR} Benchmarks for {RAG} Uncertainty Evaluation},
+  author    = {Trokhymovych, Mykola and Sumyk, Marta and Kosovan, Oleksandr and Saez-Trumper, Diego and Baeza-Yates, Ricardo},
+  booktitle = {Proceedings of the Twentieth ACM International Conference on Web Search and Data Mining (WSDM 2027)},
+  year      = {2027},
+  address   = {Hong Kong},
+  publisher = {ACM},
+  note      = {Findings track},
+  doi       = {10.1145/3862322.3863847}
+}
 ```
-
----
 
 ## License
 
-This project is licensed under the Apache 2.0 License. See [LICENSE](LICENSE) for details.
+Code: Apache 2.0 (see [LICENSE](LICENSE)).
