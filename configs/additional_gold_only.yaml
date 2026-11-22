@@ -1,0 +1,60 @@
+# Additional experiment (camera-ready): gold-only control
+# 2 open-weight models × 2 prompt variants × 1 context mode = 4 experiments
+# One row per query (1,400): the same gold passage used in the distractor_plus_gold run.
+# Input is built from data/rag_eval_multilingual_eval.csv by step 0 of run_additional_gold_only.sh.
+# distractor_text in the input is an empty placeholder: run_generation.py requires the column,
+# but it is never used because include_distractor is false.
+
+input_csv: data/additional/gold_only_input.csv
+output_dir: data/additional/generation
+language_filter: null
+
+n_rows: null
+save_every: 10
+sleep_between_calls: 0.0
+max_retries: 3
+
+columns:
+  query: [query]
+  distractor: [distractor_text]
+  gold_passage: [gold_generation_text]
+  gold_judge_passage: [gold_judge_text]
+
+prompt_variants:
+  simple:
+    system_prompt: |-
+      You are a question-answering system for RAG evaluation.
+      Use only the provided context passage.
+      Do not use outside knowledge.
+      Keep the answer concise.
+  advanced:
+    system_prompt: |-
+      You are a question-answering system for RAG evaluation.
+      Use only the provided context passage.
+      Do not use outside knowledge.
+      If the context does not contain enough information to answer the question, say: "I don't know based on the provided context."
+      Keep the answer concise.
+
+context_modes:
+  gold_only:
+    answer_col: answer_with_gold
+    include_distractor: false
+    include_gold: true
+
+models:
+  gemma4_26b:
+    provider: ollama
+    base_url: http://localhost:11434
+    model: gemma4:26b
+    temperature: 0
+    max_output_tokens: 256
+    think: false
+  qwen3.6:27b:
+    provider: ollama
+    base_url: http://localhost:11434
+    model: qwen3.6:27b
+    temperature: 0
+    max_output_tokens: 256
+    think: false
+
+only: null
