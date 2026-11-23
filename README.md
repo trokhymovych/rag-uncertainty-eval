@@ -1,10 +1,20 @@
 # Does RAG Answer Without Sufficient Evidence? Reusing IR Benchmarks for RAG Uncertainty Evaluation
 
-Code for the paper **"Does RAG Answer Without Sufficient Evidence? Reusing IR Benchmarks for RAG Uncertainty Evaluation"** (WSDM 2027 (Findings), [doi:10.1145/3862322.3863847](https://doi.org/10.1145/3862322.3863847)).
+<p align="center">
+  <!-- <a href="https://doi.org/10.1145/3862322.3863847"><img src="https://img.shields.io/badge/Paper-WSDM%202027%20Findings-b31b1b" alt="Paper"></a> -->
+  <a href="https://huggingface.co/datasets/trokhymovych/miracl-distractors"><img src="https://img.shields.io/badge/%F0%9F%A4%97%20Dataset-miracl--distractors-ffcc4d" alt="Dataset"></a>
+  <a href="LICENSE"><img src="https://img.shields.io/badge/License-Apache%202.0-blue" alt="License"></a>
+</p>
 
-**Dataset:** [huggingface.co/datasets/trokhymovych/miracl-distractors](https://huggingface.co/datasets/trokhymovych/miracl-distractors) (benchmark, all model responses, judge labels, human annotations).
+<p align="center">
+  <img src="resources/teaser.png" alt="A relevant but answer-free passage leads the generator to produce an incorrect answer instead of abstaining" width="520">
+</p>
 
-We turn MIRACL hard negatives (passages explicitly judged non-relevant) into a benchmark of distractors graded Easy / Medium / Hard by similarity to the answer, across 14 languages. We then test whether LLMs abstain or answer incorrectly when given only such a distractor, or a distractor next to the correct passage. Responses are labeled `ABSTAIN`, `CORRECT`, or `INCORRECT` by three LLM judges validated against expert annotation.
+Code for the paper **"Does RAG Answer Without Sufficient Evidence? Reusing IR Benchmarks for RAG Uncertainty Evaluation"** (WSDM 2027, Findings).
+
+We turn [MIRACL](https://huggingface.co/datasets/miracl/miracl) hard negatives (passages explicitly judged non-relevant) into a benchmark of distractors graded Easy / Medium / Hard by similarity to the answer, across 14 languages. We then test whether LLMs abstain or answer incorrectly when given only such a distractor, or a distractor next to the correct passage. Responses are labeled `ABSTAIN`, `CORRECT`, or `INCORRECT` by three LLM judges validated against expert annotation.
+
+The [dataset](https://huggingface.co/datasets/trokhymovych/miracl-distractors) contains the benchmark, all model responses, judge labels, and human annotations.
 
 ## Repository
 
