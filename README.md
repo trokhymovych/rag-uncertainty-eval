@@ -43,6 +43,8 @@ Prompts are in the config files; the judge prompt is in [`src/rag_eval/prompts.p
 
 ## Citation
 
+If you use this code or benchmark, please cite:
+
 ```bibtex
 @inproceedings{trokhymovych2027rag,
   title     = {Does {RAG} Answer Without Sufficient Evidence? Reusing {IR} Benchmarks for {RAG} Uncertainty Evaluation},
@@ -55,6 +57,9 @@ Prompts are in the config files; the judge prompt is in [`src/rag_eval/prompts.p
   doi       = {10.1145/3862322.3863847}
 }
 ```
+Citation metadata is also available in [CITATION.cff](CITATION.cff).
+
+---
 
 ## License
 
