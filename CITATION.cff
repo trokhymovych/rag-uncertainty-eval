@@ -1,0 +1,39 @@
+cff-version: 1.2.0
+message: "If you use this code or benchmark, please cite the paper below."
+title: "rag-uncertainty-eval"
+repository-code: "https://github.com/trokhymovych/rag-uncertainty-eval"
+license: Apache-2.0
+authors:
+  - family-names: Trokhymovych
+    given-names: Mykola
+  - family-names: Sumyk
+    given-names: Marta
+  - family-names: Kosovan
+    given-names: Oleksandr
+  - family-names: Saez-Trumper
+    given-names: Diego
+  - family-names: Baeza-Yates
+    given-names: Ricardo
+preferred-citation:
+  type: conference-paper
+  title: "Does RAG Answer Without Sufficient Evidence? Reusing IR Benchmarks for RAG Uncertainty Evaluation"
+  authors:
+    - family-names: Trokhymovych
+      given-names: Mykola
+    - family-names: Sumyk
+      given-names: Marta
+    - family-names: Kosovan
+      given-names: Oleksandr
+    - family-names: Saez-Trumper
+      given-names: Diego
+    - family-names: Baeza-Yates
+      given-names: Ricardo
+  collection-title: "Proceedings of the Twentieth ACM International Conference on Web Search and Data Mining (WSDM 2027)"
+  conference:
+    name: "WSDM 2027"
+    city: "Hong Kong"
+  publisher:
+    name: ACM
+  year: 2027
+  doi: "10.1145/3862322.3863847"
+  notes: "Findings track"

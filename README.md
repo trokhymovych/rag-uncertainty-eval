@@ -147,9 +147,22 @@ Annotation guidelines used by expert annotators for judge validation are in [`re
 
 ## Citation
 
+If you use this code or benchmark, please cite:
+
 ```bibtex
-TBD
+@inproceedings{trokhymovych2027rag,
+  title     = {Does {RAG} Answer Without Sufficient Evidence? Reusing {IR} Benchmarks for {RAG} Uncertainty Evaluation},
+  author    = {Trokhymovych, Mykola and Sumyk, Marta and Kosovan, Oleksandr and Saez-Trumper, Diego and Baeza-Yates, Ricardo},
+  booktitle = {Proceedings of the Twentieth ACM International Conference on Web Search and Data Mining (WSDM 2027)},
+  year      = {2027},
+  address   = {Hong Kong},
+  publisher = {ACM},
+  note      = {Findings track},
+  doi       = {10.1145/3862322.3863847}
+}
 ```
+
+Citation metadata is also available in [CITATION.cff](CITATION.cff).
 
 ---
 
